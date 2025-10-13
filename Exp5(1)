@@ -1,0 +1,150 @@
+Project Structure
+product-crud/
+│
+├─ package.json
+├─ server.js
+└─ models/
+   └─ Product.js
+
+1. Install dependencies
+npm init -y
+npm install express mongoose body-parser
+
+2. Define the Product Schema (models/Product.js)
+const mongoose = require('mongoose');
+
+const ProductSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Product name is required'],
+  },
+  price: {
+    type: Number,
+    required: [true, 'Product price is required'],
+  },
+  category: {
+    type: String,
+    required: [true, 'Product category is required'],
+  },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Product', ProductSchema);
+
+3. Create the server and CRUD routes (server.js)
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const Product = require('./models/Product');
+
+const app = express();
+const PORT = 3000;
+
+// Middleware
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://127.0.0.1:27017/productDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('MongoDB connection error:', err));
+
+// --- CRUD Operations ---
+
+// Create a new product
+app.post('/products', async (req, res) => {
+  try {
+    const product = new Product(req.body);
+    await product.save();
+    res.status(201).json(product);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Retrieve all products
+app.get('/products', async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a product by ID
+app.put('/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json(product);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a product by ID
+app.delete('/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json({ message: 'Product deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start server
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+4. Expected Output
+
+Add a new product
+
+POST /products
+Body: { "name": "Laptop", "price": 1200, "category": "Electronics" }
+Response: 201 Created
+{
+  "_id": "64f8abc1234",
+  "name": "Laptop",
+  "price": 1200,
+  "category": "Electronics",
+  "createdAt": "2025-10-13T00:00:00.000Z",
+  "updatedAt": "2025-10-13T00:00:00.000Z",
+  "__v": 0
+}
+
+
+Get all products
+
+GET /products
+Response: 200 OK
+[
+  { "_id": "...", "name": "Laptop", "price": 1200, "category": "Electronics", ... }
+]
+
+
+Update a product
+
+PUT /products/:id
+Body: { "price": 1300 }
+Response: 200 OK
+{
+  "_id": "...",
+  "name": "Laptop",
+  "price": 1300,
+  "category": "Electronics",
+  ...
+}
+
+
+Delete a product
+
+DELETE /products/:id
+Response: 200 OK
+{ "message": "Product deleted successfully" }
