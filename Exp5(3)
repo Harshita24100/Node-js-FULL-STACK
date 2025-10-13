@@ -1,0 +1,160 @@
+1. Sample MongoDB Schema Design (Using Mongoose)
+
+Folder structure (optional):
+
+ecommerce-catalog/
+│
+├─ package.json
+├─ server.js
+└─ models/
+    └─ Product.js
+
+
+Install dependencies
+
+npm init -y
+npm install mongoose
+
+
+Define Product schema (models/Product.js)
+
+const mongoose = require('mongoose');
+
+const VariantSchema = new mongoose.Schema({
+  color: { type: String, required: true },
+  size: { type: String, required: true },
+  stock: { type: Number, required: true }
+});
+
+const ProductSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  category: { type: String, required: true },
+  variants: [VariantSchema]  // Nested documents
+}, { timestamps: true });
+
+module.exports = mongoose.model('Product', ProductSchema);
+
+2. Sample Data Insertion
+
+server.js (or script for inserting data)
+
+const mongoose = require('mongoose');
+const Product = require('./models/Product');
+
+mongoose.connect('mongodb://127.0.0.1:27017/ecommerceDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error(err));
+
+async function insertProducts() {
+  const products = [
+    {
+      name: "T-Shirt",
+      price: 20,
+      category: "Clothing",
+      variants: [
+        { color: "Red", size: "M", stock: 50 },
+        { color: "Blue", size: "L", stock: 30 }
+      ]
+    },
+    {
+      name: "Sneakers",
+      price: 80,
+      category: "Footwear",
+      variants: [
+        { color: "White", size: "42", stock: 20 },
+        { color: "Black", size: "40", stock: 15 }
+      ]
+    }
+  ];
+
+  await Product.insertMany(products);
+  console.log('Products inserted successfully');
+  mongoose.connection.close();
+}
+
+insertProducts();
+
+3. Queries
+
+Retrieve all products
+
+const allProducts = await Product.find();
+console.log(allProducts);
+
+
+Filter products by category
+
+const clothingProducts = await Product.find({ category: "Clothing" });
+console.log(clothingProducts);
+
+
+Project specific variant details (e.g., color and stock only)
+
+const productVariants = await Product.find(
+  { name: "T-Shirt" }, 
+  { name: 1, variants: { color: 1, stock: 1, _id: 0 } }
+);
+console.log(productVariants);
+
+
+Access a nested variant
+
+const product = await Product.findOne({ name: "Sneakers" });
+console.log(product.variants[0].color); // Output: "White"
+
+4. Expected Output
+
+All products
+
+[
+  {
+    "_id": "...",
+    "name": "T-Shirt",
+    "price": 20,
+    "category": "Clothing",
+    "variants": [
+      { "color": "Red", "size": "M", "stock": 50 },
+      { "color": "Blue", "size": "L", "stock": 30 }
+    ]
+  },
+  {
+    "_id": "...",
+    "name": "Sneakers",
+    "price": 80,
+    "category": "Footwear",
+    "variants": [
+      { "color": "White", "size": "42", "stock": 20 },
+      { "color": "Black", "size": "40", "stock": 15 }
+    ]
+  }
+]
+
+
+Filtered by category "Clothing"
+
+[
+  {
+    "_id": "...",
+    "name": "T-Shirt",
+    "price": 20,
+    "category": "Clothing",
+    "variants": [ ... ]
+  }
+]
+
+
+Projected variants (color + stock)
+
+[
+  {
+    "name": "T-Shirt",
+    "variants": [
+      { "color": "Red", "stock": 50 },
+      { "color": "Blue", "stock": 30 }
+    ]
+  }
+]
